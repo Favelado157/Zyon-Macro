@@ -10,7 +10,7 @@ except ImportError:
     mouse = keyboard = None
 
 APP_NAME = "GhosttzzKBot"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(BASE_DIR))) / APP_NAME if sys.platform == "win32" else BASE_DIR
 CONFIG_DIR = DATA_DIR / "config"
@@ -19,7 +19,7 @@ ASSETS = BASE_DIR / "assets"
 CONFIG_FILE = CONFIG_DIR / "settings.json"
 DEFAULTS = {
     "hotkeys": {"record": "<f5>", "pause": "<f6>", "play": "<f7>", "stop": "<f8>"},
-    "record_mouse_movement": True, "record_mouse_clicks": True, "record_scroll": True,
+    "record_mouse_movement": True, "record_mouse_clicks": True, "record_scroll": True, "record_keyboard": False,
     "show_mouse_path": True, "repeat_playback": False, "click_delay_ms": 50,
     "mode": "Normal", "repeat_interval_ms": 100
 }
@@ -54,6 +54,29 @@ def save_settings(cfg):
     temp.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
     temp.replace(CONFIG_FILE)
 
+def encode_key(key):
+    if isinstance(key, keyboard.Key):
+        return "special", key.name
+    if isinstance(key, keyboard.KeyCode):
+        if sys.platform == "win32" and key.vk:
+            return "vk", key.vk
+        if key.char:
+            return ("dead" if key.is_dead else "char"), key.char
+        if key.vk:
+            return "vk", key.vk
+    return None
+
+
+def decode_key(kind, value):
+    if kind == "special" and isinstance(value, str) and value in keyboard.Key.__members__:
+        return keyboard.Key[value]
+    if kind == "vk" and type(value) is int and 0 < value <= (255 if sys.platform == "win32" else 0xFFFFFFFF):
+        return keyboard.KeyCode.from_vk(value)
+    if kind in ("char", "dead") and isinstance(value, str) and len(value) == 1 and not 0xD800 <= ord(value) <= 0xDFFF:
+        return (keyboard.KeyCode.from_dead if kind == "dead" else keyboard.KeyCode.from_char)(value)
+    raise ValueError("Tecla inválida na gravação.")
+
+
 def validate_events(events):
     if not isinstance(events, list):
         raise ValueError("O arquivo exige uma lista de eventos.")
@@ -65,6 +88,11 @@ def validate_events(events):
         if type(stamp) not in {int, float} or not math.isfinite(stamp) or stamp < previous:
             raise ValueError("Tempo inválido na gravação.")
         previous = stamp
+        if event.get("type") == "key":
+            if type(event.get("pressed")) is not bool:
+                raise ValueError("Estado inválido da tecla.")
+            decode_key(event.get("encoding"), event.get("key"))
+            continue
         if any(type(event.get(axis)) is not int or not -(2**31) <= event[axis] < 2**31 for axis in ("x", "y")):
             raise ValueError("Coordenadas inválidas na gravação.")
         kind = event.get("type")
@@ -86,6 +114,8 @@ class GhosttzzKBot:
         self.ui_queue = queue.SimpleQueue()
         self.closing = False
         self.editing_shortcuts = False
+        self.capture_keys = False
+        self.recorded_keys = {}
         self.record_options = (True, True, True, 0)
         self.paused_at = None
         self.recording = False
@@ -107,6 +137,8 @@ class GhosttzzKBot:
         self.repeat_var = tk.BooleanVar(value=bool(self.cfg.get("repeat_playback", False)))
         self.move_var = tk.BooleanVar(value=bool(self.cfg.get("record_mouse_movement", True)))
         self.click_var = tk.BooleanVar(value=bool(self.cfg.get("record_mouse_clicks", True)))
+        self.keyboard_var = tk.BooleanVar(value=bool(self.cfg["record_keyboard"]))
+        self.capture_status = tk.StringVar(value="●  Sistema online")
         self.scroll_var = tk.BooleanVar(value=bool(self.cfg.get("record_scroll", True)))
         self.path_var = tk.BooleanVar(value=bool(self.cfg.get("show_mouse_path", False)))
         self.root.title(f"{APP_NAME} v{VERSION}")
@@ -251,7 +283,8 @@ class GhosttzzKBot:
         footer = tk.Frame(self.root, bg="#030a18", highlightbackground="#07528a", highlightthickness=1)
         footer.pack(side="bottom", fill="x")
         self.label(footer, f"{APP_NAME}   |   v{VERSION}", fg="#34b8ff", font=("Segoe UI", 10, "bold italic")).pack(side="left", padx=10, pady=4)
-        self.label(footer, "●  Sistema online", fg="#00ecc0").pack(side="right", padx=12)
+        self.capture_indicator = self.label(footer, textvariable=self.capture_status, fg="#00ecc0")
+        self.capture_indicator.pack(side="right", padx=12)
         body = tk.Frame(self.root, bg=bg)
         body.pack(fill="both", expand=True, padx=8, pady=8)
         for column, (minimum, weight) in enumerate(((151, 0), (458, 5), (276, 3))):
@@ -311,7 +344,8 @@ class GhosttzzKBot:
         left = tk.Frame(columns, bg="#06182b")
         left.pack(side="left", fill="both", expand=True, padx=(0, 8))
         for caption, var in (("Gravar movimento do mouse", self.move_var), ("Gravar cliques do mouse", self.click_var),
-                             ("Gravar rolagem da roda", self.scroll_var), ("Exibir caminho do mouse", self.path_var)):
+                             ("Gravar rolagem da roda", self.scroll_var), ("Gravar teclas digitadas", self.keyboard_var),
+                             ("Exibir caminho do mouse", self.path_var)):
             self.toggle(left, caption, var)
         options = tk.Frame(columns, bg=settings["bg"])
         options.pack(side="right", fill="both", expand=True)
@@ -433,10 +467,13 @@ class GhosttzzKBot:
             self.events = []
             self.record_start = time.perf_counter()
             self.paused_at = None
+            self.recorded_keys.clear()
+            self.capture_keys = self.keyboard_var.get()
             self.recording = True
         self.file_size = 0
         self.filename.set("Gravação nova")
-        self.status.set("Gravando movimentos e cliques do mouse…")
+        self.status.set("Gravando mouse e teclado…" if self.capture_keys else "Gravando mouse…")
+        self.refresh_capture_indicator()
         self.update_info()
 
     def pause_toggle(self):
@@ -444,10 +481,12 @@ class GhosttzzKBot:
             with self.lock:
                 if self.paused_at is None:
                     self.paused_at = time.perf_counter()
+                    self.release_recorded_keys(self.paused_at)
                 else:
                     self.record_start += time.perf_counter() - self.paused_at
                     self.paused_at = None
             self.status.set("Gravação pausada." if self.paused_at else "Gravação retomada.")
+            self.refresh_capture_indicator()
         elif self.playing:
             if self.resume_event.is_set():
                 self.resume_event.clear()
@@ -479,10 +518,32 @@ class GhosttzzKBot:
         self.mark_control_click()
         action()
 
+    def refresh_capture_indicator(self):
+        if self.recording and self.paused_at is not None:
+            text, color = "●  Gravação pausada", "#ffb347"
+        elif self.recording:
+            text = "●  Gravando mouse e teclado" if self.capture_keys else "●  Gravando mouse"
+            color = "#ff476b"
+        else:
+            text, color = "●  Sistema online", "#00ecc0"
+        self.capture_status.set(text)
+        self.capture_indicator.configure(fg=color)
+
+    def release_recorded_keys(self, now):
+        elapsed = round(now - self.record_start, 4)
+        for _, presses in reversed(list(self.recorded_keys.values())):
+            if not presses[0].get("panel"):
+                self.events.append({**presses[0], "pressed": False, "t": elapsed})
+        self.recorded_keys.clear()
+
     def finish_record(self):
         with self.lock:
+            if self.recording:
+                self.release_recorded_keys(time.perf_counter())
             self.recording = False
+            self.capture_keys = False
             self.paused_at = None
+        self.refresh_capture_indicator()
 
     def play_record(self):
         if self.playing:
@@ -515,8 +576,10 @@ class GhosttzzKBot:
         return False
 
     def play_worker(self, events, repeat, interval, click_delay):
-        pressed = set()
+        pressed = {}
         controller = None
+        keys = None
+        held_keys = {}
         result = "Reprodução concluída."
         try:
             controller = mouse.Controller()
@@ -527,15 +590,27 @@ class GhosttzzKBot:
                         break
                     previous = event["t"]
                     kind = event["type"]
+                    if kind == "key":
+                        if keys is None:
+                            keys = keyboard.Controller()
+                        identity = event["encoding"], event["key"]
+                        if event["pressed"]:
+                            key = held_keys.get(identity) or decode_key(*identity)
+                            keys.press(key)
+                            held_keys[identity] = key
+                        elif identity in held_keys:
+                            keys.release(held_keys[identity])
+                            del held_keys[identity]
+                        continue
                     controller.position = event["x"], event["y"]
                     if kind == "click":
                         button = getattr(mouse.Button, event["button"])
                         if event["pressed"] and button not in pressed:
                             controller.press(button)
-                            pressed.add(button)
+                            pressed[button] = None
                         elif not event["pressed"] and button in pressed:
                             controller.release(button)
-                            pressed.remove(button)
+                            del pressed[button]
                             if not self.playback_wait(click_delay):
                                 break
                     elif kind == "scroll":
@@ -543,7 +618,11 @@ class GhosttzzKBot:
                 while pressed:
                     button = next(iter(pressed))
                     controller.release(button)
-                    pressed.remove(button)
+                    del pressed[button]
+                while held_keys:
+                    identity = next(reversed(held_keys))
+                    keys.release(held_keys[identity])
+                    del held_keys[identity]
                 if not repeat or not self.playback_wait(interval):
                     break
             if self.stop_event.is_set():
@@ -555,6 +634,11 @@ class GhosttzzKBot:
                 try:
                     controller.release(button)
                 except OSError:
+                    pass
+            for key in reversed(held_keys.values()):
+                try:
+                    keys.release(key)
+                except Exception:
                     pass
             self.ui_queue.put(lambda: self.play_finished(result))
 
@@ -599,7 +683,8 @@ class GhosttzzKBot:
     def save_quick(self):
         self.cfg.update(record_mouse_movement=self.move_var.get(), record_mouse_clicks=self.click_var.get(),
                         record_scroll=self.scroll_var.get(), show_mouse_path=self.path_var.get(),
-                        repeat_playback=self.repeat_var.get(), mode=self.mode.get())
+                        repeat_playback=self.repeat_var.get(), mode=self.mode.get(),
+                        record_keyboard=self.keyboard_var.get())
         for var, key, maximum in ((self.click_delay, "click_delay_ms", 2000),
                                   (self.interval, "repeat_interval_ms", 60000)):
             try:
@@ -727,9 +812,42 @@ class GhosttzzKBot:
         if len(set(parsed)) != len(parsed):
             raise ValueError("Escolha combinações diferentes dos outros atalhos do painel.")
 
-    def dispatch_hotkey(self, action):
-        if not self.editing_shortcuts:
-            self.ui_queue.put(action)
+    def dispatch_hotkey(self, action, shortcut):
+        if self.editing_shortcuts:
+            return
+        with self.lock:
+            for canonical, presses in self.recorded_keys.values():
+                if canonical in shortcut:
+                    for event in presses:
+                        event["panel"] = True
+        self.ui_queue.put(action)
+
+    def record_key(self, key, canonical, pressed):
+        identity = encode_key(key)
+        if identity is None:
+            return
+        with self.lock:
+            if not self.recording or not self.capture_keys or self.paused_at is not None:
+                return
+            if identity[0] == "char" and identity[1].isascii() and identity[1].isalpha():
+                identity = "char", identity[1].lower()
+            active = self.recorded_keys.get(identity)
+            if not pressed and active is None:
+                return
+            if active is None:
+                active = canonical, []
+                self.recorded_keys[identity] = active
+            encoding, value = identity
+            event = dict(type="key", encoding=encoding, key=value, pressed=pressed,
+                         t=round(time.perf_counter() - self.record_start, 4))
+            presses = active[1]
+            if presses and presses[0].get("panel"):
+                event["panel"] = True
+            self.events.append(event)
+            if pressed:
+                presses.append(event)
+            else:
+                del self.recorded_keys[identity]
 
     def start_hotkeys(self):
         try:
@@ -749,10 +867,27 @@ class GhosttzzKBot:
             "<ctrl>+<alt>+f": self.open_recordings_folder,
             "<ctrl>+<alt>+c": self.show_config_path,
         }
-        mapping = {key: lambda fn=action: self.dispatch_hotkey(fn) for key, action in actions.items()}
-        self.hotkey_listener = keyboard.GlobalHotKeys(mapping)
-        self.hotkey_listener.daemon = True
-        self.hotkey_listener.start()
+        hotkeys = []
+        for shortcut, action in actions.items():
+            keys = keyboard.HotKey.parse(shortcut)
+            hotkeys.append(keyboard.HotKey(keys, lambda fn=action, chord=keys: self.dispatch_hotkey(fn, chord)))
+
+        def handle(key, injected, pressed):
+            if key is None or injected:
+                return
+            canonical = listener.canonical(key)
+            if not self.editing_shortcuts:
+                self.record_key(key, canonical, pressed)
+            for hotkey in hotkeys:
+                if pressed:
+                    hotkey.press(canonical)
+                else:
+                    hotkey.release(canonical)
+
+        listener = keyboard.Listener(on_press=lambda key, injected: handle(key, injected, True),
+                                     on_release=lambda key, injected: handle(key, injected, False))
+        self.hotkey_listener = listener
+        listener.start()
 
     def toggle_window(self):
         if self.root.state() in {"withdrawn", "iconic"}:self.root.deiconify();self.root.lift()

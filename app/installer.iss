@@ -1,7 +1,7 @@
 [Setup]
 AppId={{F9BC7E0A-73F2-48F1-AF61-1E7B9C12FBB1}
 AppName=GhosttzzKBot
-AppVersion=1.2.0
+AppVersion=1.3.0
 DefaultDirName={localappdata}\Programs\GhosttzzKBot
 DefaultGroupName=GhosttzzKBot
 PrivilegesRequired=lowest

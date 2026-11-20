@@ -8,6 +8,7 @@
   "record_mouse_movement": true,
   "record_mouse_clicks": true,
   "record_scroll": true,
+  "record_keyboard": false,
   "show_mouse_path": true,
   "repeat_playback": false,
   "repeat_interval_ms": 100,
