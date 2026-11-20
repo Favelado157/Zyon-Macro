@@ -1,4 +1,4 @@
-GhosttzzKBot 1.3.0 — Windows 11
+GhosttzzKBot 1.4.0 — Windows 11
 
 Extraia o ZIP e execute GhosttzzKBot-Setup.exe. Abra GhosttzzKBot pelo
 menu Iniciar ou pelo atalho opcional na área de trabalho.
@@ -14,3 +14,6 @@ Configurações e temas ficam em %LOCALAPPDATA%\GhosttzzKBot\config.
 Use Temas para importar arte para o cabeçalho, o banner, a lateral e o
 ícone da janela. As mudanças de imagem aparecem ao reabrir o aplicativo.
 As gravações são salvas por padrão em %LOCALAPPDATA%\GhosttzzKBot\recordings.
+
+Ao aceitar um aviso de atualização, o painel baixa o instalador, aplica
+a atualização e reabre ao terminar.

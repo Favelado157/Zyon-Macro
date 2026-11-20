@@ -1,21 +1,23 @@
-import json, os, sys, time, threading, subprocess, queue, webbrowser, math
-from PIL import Image, ImageTk, ImageOps, ImageEnhance
-from update import find_update
+import json, os, sys, time, threading, subprocess, queue, math
+from PIL import Image, ImageTk, ImageOps
+from panel_art import control_texture, logo, shaded_art
+from update import download_installer, find_update
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 try:
     from pynput import mouse, keyboard
 except ImportError:
     mouse = keyboard = None
 
 APP_NAME = "GhosttzzKBot"
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(BASE_DIR))) / APP_NAME if sys.platform == "win32" else BASE_DIR
 CONFIG_DIR = DATA_DIR / "config"
 RECORDINGS_DIR = DATA_DIR / "recordings"
 ASSETS = BASE_DIR / "assets"
+BRUSH_FONT = ASSETS / "RoadRage-Regular.ttf"
 CONFIG_FILE = CONFIG_DIR / "settings.json"
 DEFAULTS = {
     "hotkeys": {"record": "<f5>", "pause": "<f6>", "play": "<f7>", "stop": "<f8>"},
@@ -113,6 +115,8 @@ class GhosttzzKBot:
         self.events = []
         self.ui_queue = queue.SimpleQueue()
         self.closing = False
+        self.update_busy = False
+        self.pending_installer = None
         self.editing_shortcuts = False
         self.capture_keys = False
         self.recorded_keys = {}
@@ -142,7 +146,7 @@ class GhosttzzKBot:
         self.scroll_var = tk.BooleanVar(value=bool(self.cfg.get("record_scroll", True)))
         self.path_var = tk.BooleanVar(value=bool(self.cfg.get("show_mouse_path", False)))
         self.root.title(f"{APP_NAME} v{VERSION}")
-        self.root.geometry("1050x780")
+        self.root.geometry("1024x785")
         self.root.minsize(960, 680)
         self.custom_chrome()
         self.root.configure(bg="#020914")
@@ -232,26 +236,77 @@ class GhosttzzKBot:
             if w < 2 or h < 2:
                 return
             canvas.delete("all")
-            if role in {"banner", "cabecalho"} and not custom.exists():
-                back = ImageEnhance.Brightness(ImageOps.fit(art, (w, h))).enhance(0.32)
-                if role == "banner":
-                    portrait = ImageOps.fit(art, (min(w, max(185, w // 2)), h), centering=(0.5, 0.34))
-                    fade = Image.new("L", (portrait.width, h))
-                    ramp = bytes(int(255 * min(1, (portrait.width - x) / 65)) for x in range(portrait.width))
-                    fade.frombytes(ramp * h)
-                    back.paste(portrait, (0, 0), fade)
-            else:
+            if custom.exists() or role == "icone":
                 back = ImageOps.fit(art, (w, h), centering=(0.5, 0.43))
+            else:
+                back = shaded_art(art, (w, h), role)
+            if role == "banner":
+                logo(back, title, BRUSH_FONT, (round(w * .40), 7, round(w * .57), round(h * .61)))
+            elif role == "lateral":
+                logo(back, APP_NAME, BRUSH_FONT, (3, round(h * .72), w - 6, round(h * .21)))
             canvas.photo = ImageTk.PhotoImage(back)
             canvas.create_image(0, 0, image=canvas.photo, anchor="nw")
-            if title:
-                x = w * (0.72 if role == "banner" else 0.5)
-                canvas.create_text(x + 2, h * .46 + 2, text=title, fill="#001130",
-                                   font=("Segoe UI", 26 if role == "banner" else 15, "bold italic"))
-                canvas.create_text(x, h * .46, text=title, fill="#5cdcff",
-                                   font=("Segoe UI", 26 if role == "banner" else 15, "bold italic"))
-                canvas.create_text(x, h * .77, text=subtitle, fill="#b8ebff", font=("Segoe UI", 9, "bold"))
+            if subtitle:
+                canvas.create_text(w * .71, h * .81, text=subtitle, fill="#b8ebff",
+                                   font=("Segoe UI", 9, "bold"))
+            if role == "lateral":
+                canvas.create_text(w / 2, h * .95, text="SUA MACRO, DO SEU JEITO!", fill="#06caff",
+                                   font=("Segoe UI", 8, "bold italic"))
+            if role != "cabecalho":
+                canvas.create_rectangle(0, 0, w - 1, h - 1, outline="#07528a")
         canvas.bind("<Configure>", draw)
+        return canvas
+
+    def brand_image(self, parent, width, height):
+        background = Image.new("RGB", (width, height), parent.cget("bg"))
+        logo(background, APP_NAME, BRUSH_FONT, (0, 0, width, height))
+        photo = ImageTk.PhotoImage(background)
+        label = self.label(parent, image=photo)
+        label.photo = photo
+        return label
+
+    def macro_button(self, parent, key, palette, action):
+        canvas = tk.Canvas(parent, width=99, height=95, bg=parent.cget("bg"), highlightthickness=0,
+                           takefocus=True, cursor="hand2")
+        canvas.hovered = False
+        canvas.shortcut = ""
+
+        def paint(event=None):
+            w, h = canvas.winfo_width(), canvas.winfo_height()
+            if w < 22 or h < 22:
+                return
+            if getattr(canvas, "face_key", None) != (w, h, canvas.hovered):
+                canvas.photo = ImageTk.PhotoImage(control_texture(self.texture, (w, h), palette, canvas.hovered))
+                canvas.face_key = w, h, canvas.hovered
+            canvas.delete("all")
+            canvas.create_image(0, 0, anchor="nw", image=canvas.photo)
+            center = w / 2
+            y = h * .31
+            if key == "record":
+                canvas.create_oval(center - 13, y - 13, center + 13, y + 13, fill="white", outline="")
+            elif key == "pause":
+                for dx in (-7, 5):
+                    canvas.create_line(center + dx, y - 10, center + dx, y + 10, fill="white", width=6, capstyle="round")
+            elif key == "play":
+                canvas.create_polygon(center - 9, y - 13, center + 13, y, center - 9, y + 13, fill="white")
+            else:
+                canvas.create_rectangle(center - 11, y - 11, center + 11, y + 11, fill="white", outline="")
+            canvas.create_text(center, h * .65, text=self.labels[key], fill="white", font=("Segoe UI", 11, "bold"))
+            canvas.create_text(center, h * .84, text=canvas.shortcut, fill="#e4f5ff", font=("Segoe UI", 9))
+            if self.root.focus_get() == canvas:
+                canvas.create_rectangle(5, 5, w - 6, h - 6, outline="white", dash=(2, 3))
+
+        def hover(active):
+            canvas.hovered = active
+            paint()
+
+        canvas.repaint = paint
+        for sequence in ("<Configure>", "<FocusIn>", "<FocusOut>"):
+            canvas.bind(sequence, paint)
+        canvas.bind("<Enter>", lambda event: hover(True))
+        canvas.bind("<Leave>", lambda event: hover(False))
+        for sequence in ("<ButtonRelease-1>", "<Return>", "<space>"):
+            canvas.bind(sequence, lambda event: self.run_control(action))
         return canvas
 
     def build_ui(self):
@@ -259,16 +314,21 @@ class GhosttzzKBot:
         top = tk.Frame(self.root, bg="#030a18", height=86, highlightbackground="#0875bd", highlightthickness=1)
         top.pack(fill="x")
         top.pack_propagate(False)
-        self.art(top, "cabecalho", 1000, 86).place(relwidth=1, relheight=1)
+        header_art = self.art(top, "cabecalho", 1000, 86)
+        header_art.place(relwidth=1, relheight=1)
         self.art(top, "icone", 82, 80).pack(side="left", padx=(5, 11), pady=3)
         brand = tk.Frame(top, bg="#030a18")
         brand.pack(side="left", pady=7)
-        name = self.label(brand, APP_NAME, fg="#54d5ff", font=("Segoe UI", 29, "bold italic"))
-        name.pack(anchor="w")
+        name_row = tk.Frame(brand, bg=brand.cget("bg"))
+        name_row.pack(anchor="w")
+        name = self.brand_image(name_row, 236, 48)
+        name.pack(side="left")
+        version = self.label(name_row, f"v{VERSION}", fg="#b8dcff", font=("Segoe UI", 9, "bold"))
+        version.pack(side="left", anchor="s", pady=5, padx=4)
         tagline = self.label(brand, "Automatize seus movimentos. Domine seu jogo.", fg="#63dbff",
                              font=("Segoe UI", 10, "italic"))
         tagline.pack(anchor="w")
-        for widget in (top, brand, name, tagline):
+        for widget in (top, header_art, brand, name, version, tagline):
             widget.bind("<Button-1>", self.drag_start)
             widget.bind("<B1-Motion>", self.drag_move)
             widget.bind("<Double-Button-1>", lambda event: self.maximize())
@@ -276,35 +336,37 @@ class GhosttzzKBot:
         actions.pack(side="right", anchor="n", padx=7, pady=6)
         for caption, action in (("−", self.root.iconify), ("□", self.maximize), ("×", self.close)):
             self.btn(actions, caption, "#09203a", action, pady=0, font=13, width=2).pack(side="left", padx=2)
-        self.btn(top, "⚙", "#09203a", self.show_config_path, pady=0, font=15).place(relx=1, x=-14, y=46, anchor="ne")
+        self.btn(top, "⚙", "#061322", self.open_settings, pady=0, font=15).place(relx=1, x=-14, y=46, anchor="ne")
         self.label(top, "MAIS PRECISÃO\nMAIS CONTROLE\nMAIS RESULTADOS", fg="#10bfff",
                    font=("Segoe UI", 9, "bold italic")).pack(side="right", padx=(0, 19))
 
         footer = tk.Frame(self.root, bg="#030a18", highlightbackground="#07528a", highlightthickness=1)
         footer.pack(side="bottom", fill="x")
-        self.label(footer, f"{APP_NAME}   |   v{VERSION}", fg="#34b8ff", font=("Segoe UI", 10, "bold italic")).pack(side="left", padx=10, pady=4)
+        self.brand_image(footer, 114, 24).pack(side="left", padx=9, pady=3)
+        self.label(footer, f"│  v{VERSION}  │   Automatize seus movimentos. Domine seu jogo.", fg="#66b6ec",
+                   font=("Segoe UI", 8)).pack(side="left")
+        self.label(footer, "♛", fg="#c6e8ff", font=("Segoe UI Symbol", 16)).pack(side="right", padx=9)
         self.capture_indicator = self.label(footer, textvariable=self.capture_status, fg="#00ecc0")
         self.capture_indicator.pack(side="right", padx=12)
         body = tk.Frame(self.root, bg=bg)
         body.pack(fill="both", expand=True, padx=8, pady=8)
-        for column, (minimum, weight) in enumerate(((151, 0), (458, 5), (276, 3))):
+        for column, (minimum, weight) in enumerate(((158, 0), (452, 5), (279, 3))):
             body.columnconfigure(column, minsize=minimum, weight=weight)
         body.rowconfigure(0, weight=1)
         nav = tk.Frame(body, bg="#040c18", highlightbackground="#07528a", highlightthickness=1)
         nav.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         for index, (caption, action) in enumerate((
             ("⌂   Início", self.focus_home), ("▣   Gravações", self.open_recordings_folder),
-            ("⚙   Configurações", self.show_config_path), ("⌨   Atalhos", self.edit_hotkeys),
+            ("⌨   Atalhos", self.edit_hotkeys),
             ("◉   Temas", self.edit_theme), ("ⓘ   Sobre", self.about),
         )):
             color = "#0948ad" if index == 0 else "#040c18"
             self.btn(nav, caption, color, action, pady=9, anchor="w").pack(fill="x", padx=3, pady=2)
         self.art(nav, "lateral", 150, 245).pack(fill="both", expand=True, padx=2, pady=(10, 2))
-        self.label(nav, APP_NAME, fg="#16bfff", font=("Segoe UI", 17, "bold italic")).pack(pady=(0, 7))
 
         center = tk.Frame(body, bg=bg)
         center.grid(row=0, column=1, sticky="nsew", padx=(0, 8))
-        self.art(center, "banner", 470, 120, APP_NAME, "MACRO  •  GRAVAÇÃO  •  AUTOMAÇÃO").pack(fill="x")
+        self.art(center, "banner", 470, 131, APP_NAME, "MACRO  •  GRAVAÇÃO  •  AUTOMAÇÃO").pack(fill="x")
         controls = self.card(center, "◎   Controles Principais")
         controls.pack(fill="x", pady=(8, 0))
         buttons = tk.Frame(controls, bg=controls["bg"])
@@ -312,12 +374,16 @@ class GhosttzzKBot:
         self.controls = {}
         self.labels = {"record": "Gravar", "pause": "Pausar", "play": "Play", "stop": "Parar"}
         self.symbols = {"record": "●", "pause": "Ⅱ", "play": "▶", "stop": "■"}
-        for key, color, action in (
-            ("record", "#c70c32", self.start_record), ("pause", "#a85a00", self.pause_toggle),
-            ("play", "#007451", self.play_record), ("stop", "#0644af", self.stop_all),
+        with Image.open(ASSETS / "painel.jpg") as source:
+            self.texture = source.convert("RGB")
+        for key, palette, action in (
+            ("record", ("#ff1645", "#4c020d", "#ff2e58"), self.start_record),
+            ("pause", ("#ffb714", "#633400", "#ffc34e"), self.pause_toggle),
+            ("play", ("#0abb86", "#003a2f", "#30ffb8"), self.play_record),
+            ("stop", ("#0874ff", "#001a5b", "#43a2ff"), self.stop_all),
         ):
-            self.controls[key] = self.btn(buttons, "", color, lambda fn=action: self.run_control(fn), pady=9, font=11, width=8)
-            self.controls[key].pack(side="left", expand=True, fill="x", padx=3)
+            self.controls[key] = self.macro_button(buttons, key, palette, action)
+            self.controls[key].pack(side="left", expand=True, fill="x", padx=4)
 
         info = self.card(center, "▣   Informações da Gravação")
         info.pack(fill="both", expand=True, pady=(8, 0))
@@ -338,6 +404,7 @@ class GhosttzzKBot:
         self.label(visual, textvariable=self.status, fg="#8bcfff", wraplength=168, font=("Segoe UI", 9)).pack(padx=3, pady=4)
 
         settings = self.card(center, "⚙   Configurações")
+        self.settings_card = settings
         settings.pack(fill="x", pady=(8, 0))
         columns = tk.Frame(settings, bg=settings["bg"])
         columns.pack(fill="x", padx=8, pady=(0, 7))
@@ -378,7 +445,8 @@ class GhosttzzKBot:
         files.pack(fill="x", pady=(8, 0))
         for caption, action in (("▣    Salvar Gravação", self.save_recording), ("▰    Carregar Gravação", self.load_recording),
                                 ("▤    Excluir Gravação", self.delete_recording), ("▰    Abrir Pasta de Gravações", self.open_recordings_folder)):
-            self.btn(files, caption, "#092448", action, pady=4, anchor="w").pack(fill="x", padx=8, pady=3)
+            self.btn(files, caption, "#071b34", action, pady=6, anchor="w",
+                     highlightthickness=1, highlightbackground="#0875b9").pack(fill="x", padx=8, pady=3)
 
         quick = self.card(right, "ϟ   Atalhos Rápidos")
         quick.pack(fill="x", pady=(8, 0))
@@ -391,6 +459,11 @@ class GhosttzzKBot:
         tip.pack(fill="x", pady=(8, 0))
         self.label(tip, "Edite os atalhos de teclado na aba Atalhos.", fg="#86caff", wraplength=220).pack(anchor="w", padx=10, pady=(0, 6))
 
+    def open_settings(self):
+        self.settings_card.focus_set()
+        self.settings_card.configure(highlightbackground="#42caff")
+        self.root.after(700, lambda: self.settings_card.configure(highlightbackground="#07528a"))
+
     def focus_home(self):
         self.controls["record"].focus_set()
 
@@ -398,16 +471,23 @@ class GhosttzzKBot:
         row = tk.Frame(parent, bg=parent["bg"])
         row.pack(fill="x", padx=4, pady=2)
         self.label(row, caption, font=("Segoe UI", 8)).pack(side="left")
-        button = self.btn(row, "", "#0b4a79", lambda: change(), pady=0, font=8, width=3)
-        button.pack(side="right", padx=(4, 0))
+        switch = tk.Canvas(row, width=36, height=19, bg=row.cget("bg"), highlightthickness=0,
+                           takefocus=True, cursor="hand2")
+        switch.pack(side="right", padx=(4, 0))
 
         def refresh(*_):
-            button.configure(text="●" if var.get() else "○", bg="#078ee2" if var.get() else "#16334d")
+            switch.delete("all")
+            color = "#0799ed" if var.get() else "#1b3c5c"
+            switch.create_line(9, 9, 27, 9, width=17, fill=color, capstyle="round")
+            x = 26 if var.get() else 10
+            switch.create_oval(x - 7, 2, x + 7, 16, fill="#f1faff", outline="")
 
-        def change():
+        def change(event):
             var.set(not var.get())
             self.save_quick()
 
+        for sequence in ("<ButtonRelease-1>", "<Return>", "<space>"):
+            switch.bind(sequence, change)
         var.trace_add("write", refresh)
         refresh()
 
@@ -425,7 +505,8 @@ class GhosttzzKBot:
         for key, label in self.labels.items():
             shortcut = self.key_display(self.cfg["hotkeys"][key])
             self.key_labels[key].configure(text=shortcut)
-            self.controls[key].configure(text=f"{self.symbols[key]}\n{label}\n{shortcut}")
+            self.controls[key].shortcut = shortcut
+            self.controls[key].repaint()
 
     def key_display(self,key):
         return key.replace("<","").replace(">","").replace("+","+").upper()
@@ -645,7 +726,9 @@ class GhosttzzKBot:
     def play_finished(self, result):
         self.playing = False
         self.status.set(result)
-        if self.closing:
+        if self.pending_installer:
+            self.launch_installer(self.pending_installer)
+        elif self.closing:
             self.close()
 
     def stop_all(self):
@@ -865,7 +948,7 @@ class GhosttzzKBot:
             self.cfg["hotkeys"]["stop"]: self.stop_all,
             "<ctrl>+<alt>+g": self.toggle_window,
             "<ctrl>+<alt>+f": self.open_recordings_folder,
-            "<ctrl>+<alt>+c": self.show_config_path,
+            "<ctrl>+<alt>+c": self.open_settings,
         }
         hotkeys = []
         for shortcut, action in actions.items():
@@ -941,29 +1024,82 @@ class GhosttzzKBot:
         self.check_update(interactive=True)
 
     def check_update(self, interactive=False):
+        if self.update_busy:
+            return
+        self.update_busy = True
+
         def worker():
             try:
                 result = find_update(CONFIG_DIR, VERSION)
-            except (OSError, ValueError, KeyError) as error:
-                if interactive:
-                    self.ui_queue.put(lambda message=str(error): messagebox.showinfo(
-                        APP_NAME, f"Não foi possível consultar a atualização.\n{message}", parent=self.root))
-                return
-            if result:
-                self.ui_queue.put(lambda: self.offer_update(*result))
-            elif interactive:
-                self.ui_queue.put(lambda: messagebox.showinfo(APP_NAME, "Você está na versão mais recente.", parent=self.root))
+            except Exception as error:
+                self.ui_queue.put(lambda message=str(error): self.update_checked(None, interactive, message))
+            else:
+                self.ui_queue.put(lambda: self.update_checked(result, interactive))
+
         threading.Thread(target=worker, daemon=True).start()
 
+    def update_checked(self, result, interactive, error=None):
+        self.update_busy = False
+        if result:
+            self.offer_update(*result)
+        elif interactive:
+            text = f"Não foi possível consultar a atualização.\n{error}" if error else "Você está na versão mais recente."
+            messagebox.showinfo(APP_NAME, text, parent=self.root)
+
     def offer_update(self, version, target):
-        if not messagebox.askyesno(APP_NAME, f"A versão {version} está disponível. Deseja atualizar?", parent=self.root):
+        if not messagebox.askyesno(APP_NAME, f"A versão {version} está disponível. Atualizar agora?", parent=self.root):
             return
         if isinstance(target, Path):
-            self.stop_all()
-            os.startfile(target)
-            self.close()
+            self.prepare_install(target)
+            return
+        self.update_busy = True
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Atualizando GhosttzzKBot")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+        dialog.configure(bg="#041020")
+        self.label(dialog, f"Baixando a versão {version}…").pack(padx=30, pady=(18, 8))
+        bar = ttk.Progressbar(dialog, length=275, maximum=100)
+        bar.pack(padx=24, pady=(0, 18))
+
+        def worker():
+            def progress(percent):
+                self.ui_queue.put(lambda: bar.configure(value=percent))
+
+            try:
+                installer = download_installer(target, DATA_DIR / "updates", progress)
+            except Exception as error:
+                self.ui_queue.put(lambda message=str(error): self.download_finished(dialog, None, message))
+            else:
+                self.ui_queue.put(lambda: self.download_finished(dialog, installer))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def download_finished(self, dialog, installer, error=None):
+        dialog.destroy()
+        self.update_busy = False
+        if error:
+            messagebox.showerror(APP_NAME, f"Falha ao baixar a atualização.\n{error}", parent=self.root)
         else:
-            webbrowser.open(target)
+            self.prepare_install(installer)
+
+    def prepare_install(self, installer):
+        self.stop_all()
+        if self.playing:
+            self.pending_installer = installer
+        else:
+            self.launch_installer(installer)
+
+    def launch_installer(self, installer):
+        self.pending_installer = None
+        try:
+            subprocess.Popen([str(installer), "/SILENT", "/NORESTART", "/GHOST_UPDATE"],
+                             cwd=installer.parent)
+        except OSError as error:
+            messagebox.showerror(APP_NAME, f"Falha ao abrir o instalador.\n{error}", parent=self.root)
+            return
+        self.close()
 
     def tick(self):
         for _ in range(100):

@@ -18,29 +18,24 @@ jobs:
           python-version: '3.12'
       - shell: cmd
         run: build_windows.bat
-      - name: Verificar instalação e abertura
+      - name: Verificar instalação e reabertura automática
         shell: pwsh
         run: |
-          $setup = Start-Process -FilePath "$PWD/installer/GhosttzzKBot-Setup.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          $setup = Start-Process -FilePath "$PWD/installer/GhosttzzKBot-Setup.exe" -ArgumentList '/VERYSILENT','/NORESTART','/GHOST_UPDATE' -PassThru
+          if (!$setup.WaitForExit(60000)) { throw "Tempo de instalação excedido" }
           if ($setup.ExitCode -ne 0) { throw "Falha do instalador ($($setup.ExitCode))" }
-          $exe = Join-Path $env:LOCALAPPDATA 'Programs/GhosttzzKBot/GhosttzzKBot.exe'
-          $app = Start-Process -FilePath $exe -PassThru
-          try {
-            $deadline = (Get-Date).AddSeconds(20)
-            do {
-              Start-Sleep -Milliseconds 500
-              $app.Refresh()
-              if ($app.HasExited) { throw "O aplicativo encerrou antes de abrir" }
-              if ($app.MainWindowTitle -match '^GhosttzzKBot v[0-9]+\.[0-9]+\.[0-9]+$') { break }
-            } while ((Get-Date) -lt $deadline)
-            if ($app.MainWindowTitle -notmatch '^GhosttzzKBot v[0-9]+\.[0-9]+\.[0-9]+$') { throw "Janela do painel ausente: $($app.MainWindowTitle)" }
-            Write-Host "Janela confirmada: $($app.MainWindowTitle)"
-          } finally {
-            if (!$app.HasExited) {
-              $null = $app.CloseMainWindow()
-              if (!$app.WaitForExit(10000)) { Stop-Process -Id $app.Id -Force }
-            }
-          }
+          $deadline = (Get-Date).AddSeconds(20)
+          $app = $null
+          do {
+            Start-Sleep -Milliseconds 500
+            $app = Get-Process -Name GhosttzzKBot -ErrorAction SilentlyContinue |
+              Where-Object { $_.MainWindowTitle -match '^GhosttzzKBot v[0-9]+\.[0-9]+\.[0-9]+$' } |
+              Select-Object -First 1
+          } while (!$app -and (Get-Date) -lt $deadline)
+          if (!$app) { throw "O instalador não reabriu o painel" }
+          Write-Host "Janela confirmada: $($app.MainWindowTitle)"
+          $null = $app.CloseMainWindow()
+          if (!$app.WaitForExit(10000)) { Stop-Process -Id $app.Id -Force }
       - shell: pwsh
         run: |
           Compress-Archive -Path 'installer/GhosttzzKBot-Setup.exe','LEIA-ME.txt' -DestinationPath 'installer/GhosttzzKBot-Windows11.zip'

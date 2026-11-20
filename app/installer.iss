@@ -1,7 +1,7 @@
 [Setup]
 AppId={{F9BC7E0A-73F2-48F1-AF61-1E7B9C12FBB1}
 AppName=GhosttzzKBot
-AppVersion=1.3.0
+AppVersion=1.4.0
 DefaultDirName={localappdata}\Programs\GhosttzzKBot
 DefaultGroupName=GhosttzzKBot
 PrivilegesRequired=lowest
@@ -30,3 +30,19 @@ Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; Flags: un
 
 [Run]
 Filename: "{app}\GhosttzzKBot.exe"; Description: "Abrir GhosttzzKBot"; Flags: postinstall nowait skipifsilent
+
+Filename: "{app}\GhosttzzKBot.exe"; Flags: nowait skipifnotsilent; Check: IsGhostUpdate
+
+[Code]
+function IsGhostUpdate: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/GHOST_UPDATE') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
