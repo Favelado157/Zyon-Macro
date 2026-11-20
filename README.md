@@ -1,10 +1,12 @@
-# GhosttzzKBot
+# Zyon Macro
+
+Um projeto da **Zyon Nexus**.
 
 Gravador de movimentos, cliques e rolagem do mouse para Windows 11.
 
 ## Instalação
 
-Baixe `GhosttzzKBot-Windows11.zip`, extraia os arquivos e execute `GhosttzzKBot-Setup.exe`. Abra o painel pelo menu Iniciar após a instalação. [Versões no GitHub](https://github.com/Favelado157/Ghostt_Macro/releases)
+Baixe `Zyon-Macro-Windows11.zip`, extraia os arquivos e execute `Zyon-Macro-Setup.exe`. Abra o painel pelo menu Iniciar após a instalação. [Versões no GitHub](https://github.com/Favelado157/Ghostt_Macro/releases)
 
 | Ação | Atalho inicial |
 | --- | --- |
@@ -30,6 +32,10 @@ A versão 1.2.0 migra a consulta de atualizações para este repositório. Se vo
 
 Em um computador Windows com Python 3.12 e Inno Setup 6 (ou Chocolatey), execute `app\build_windows.bat`. O instalador sai em `app\installer`. A publicação de uma tag `vMAJOR.MINOR.PATCH` dispara a compilação e a publicação do ZIP no GitHub Actions. Antes de publicar, alinhe a versão em `app/ghosttzzkbot.py` e `app/installer.iss`.
 
-O aplicativo consulta a versão pública no GitHub ao iniciar, sem conta ou token. O aviso aparece quando existe uma versão mais recente com o ZIP do Windows publicado. A partir da versão 1.4.0, ao confirmar, o painel baixa o ZIP, verifica o SHA-256 publicado no GitHub e executa o instalador. O painel fecha para aplicar a atualização e reabre ao terminar. Instale a versão 1.4.0 uma vez pelo ZIP se você estiver usando uma versão anterior. A engrenagem no canto superior direito destaca as configurações no painel. O botão **Avançado** abre a pasta de configuração. Para instalar pela configuração local, coloque o novo instalador na pasta `config` e crie `config/update.json` com, por exemplo, `{"version":"1.5.0","installer":"GhosttzzKBot-Setup.exe"}`. A versão precisa ser maior que a instalada. O app pergunta se deve executar o instalador quando você o abre.
+O aplicativo consulta a versão pública no GitHub ao iniciar, sem conta ou token. O aviso aparece quando existe uma versão mais recente com o ZIP do Windows publicado. A partir da versão 1.4.0, ao confirmar, o painel baixa o ZIP, verifica o SHA-256 publicado no GitHub e executa o instalador. O painel fecha para aplicar a atualização e reabre ao terminar. Instale a versão 1.4.0 uma vez pelo ZIP se você estiver usando uma versão anterior. A engrenagem no canto superior direito destaca as configurações no painel. O botão **Avançado** abre a pasta de configuração. Para instalar pela configuração local, coloque o novo instalador na pasta `config` e crie `config/update.json` com, por exemplo, `{"version":"1.5.0","installer":"Zyon-Macro-Setup.exe"}`. A versão precisa ser maior que a instalada. O app pergunta se deve executar o instalador quando você o abre.
 
 A edição de arte é aplicada ao reabrir. Para distribuir a edição como nova versão, substitua a arte em `app/assets`, incremente a versão e gere um novo instalador. Configurações e gravações pessoais ficam fora da pasta de instalação.
+
+## Novo nome: Zyon Macro
+
+A versão 1.4.1 passa a se chamar Zyon Macro. Para atualizar uma instalação antiga do GhosttzzKBot, use a atualização do aplicativo ou baixe o ZIP da nova versão e execute o instalador. O identificador de instalação e a pasta de dados antiga foram mantidos para preservar temas, configurações e gravações. As próximas atualizações usam o mesmo repositório e os novos nomes de arquivos. O endereço do repositório permanece Ghostt_Macro.

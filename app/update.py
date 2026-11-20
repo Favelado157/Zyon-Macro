@@ -11,8 +11,8 @@ from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 REPO = "Favelado157/Ghostt_Macro"
-ZIP_NAME = "GhosttzzKBot-Windows11.zip"
-INSTALLER_NAME = "GhosttzzKBot-Setup.exe"
+ZIP_NAME = "Zyon-Macro-Windows11.zip"
+INSTALLER_NAME = "Zyon-Macro-Setup.exe"
 MAX_SIZE = 128 * 1024 * 1024
 
 

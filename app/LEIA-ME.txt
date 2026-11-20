@@ -1,6 +1,6 @@
-GhosttzzKBot 1.4.0 — Windows 11
+Zyon Macro 1.4.1 — Um projeto da Zyon Nexus — Windows 11
 
-Extraia o ZIP e execute GhosttzzKBot-Setup.exe. Abra GhosttzzKBot pelo
+Extraia o ZIP e execute Zyon-Macro-Setup.exe. Abra Zyon Macro pelo
 menu Iniciar ou pelo atalho opcional na área de trabalho.
 
 F5 grava. F6 pausa ou retoma. F7 termina a captura e reproduz a trilha.
@@ -17,3 +17,6 @@ As gravações são salvas por padrão em %LOCALAPPDATA%\GhosttzzKBot\recordings
 
 Ao aceitar um aviso de atualização, o painel baixa o instalador, aplica
 a atualização e reabre ao terminar.
+
+Para migrar do GhosttzzKBot, use a atualização do aplicativo ou execute este instalador. A pasta de
+dados antiga foi mantida para preservar suas gravações, temas e configurações.

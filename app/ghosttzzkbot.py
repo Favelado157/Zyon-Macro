@@ -10,10 +10,11 @@ try:
 except ImportError:
     mouse = keyboard = None
 
-APP_NAME = "GhosttzzKBot"
-VERSION = "1.4.0"
+APP_NAME = "Zyon Macro"
+DATA_FOLDER = "GhosttzzKBot"  # Preserve existing recordings and settings.
+VERSION = "1.4.1"
 BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(BASE_DIR))) / APP_NAME if sys.platform == "win32" else BASE_DIR
+DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(BASE_DIR))) / DATA_FOLDER if sys.platform == "win32" else BASE_DIR
 CONFIG_DIR = DATA_DIR / "config"
 RECORDINGS_DIR = DATA_DIR / "recordings"
 ASSETS = BASE_DIR / "assets"
@@ -793,7 +794,7 @@ class GhosttzzKBot:
         if not events:
             self.status.set("Não há eventos para salvar.")
             return
-        path=filedialog.asksaveasfilename(initialdir=RECORDINGS_DIR,title="Salvar gravação",defaultextension=".json",filetypes=[("Gravação GhosttzzKBot","*.json")],initialfile="gravacao.json")
+        path=filedialog.asksaveasfilename(initialdir=RECORDINGS_DIR,title="Salvar gravação",defaultextension=".json",filetypes=[("Gravação Zyon Macro","*.json")],initialfile="gravacao.json")
         if path:
             try:
                 Path(path).write_text(json.dumps({"app":APP_NAME,"events":events},indent=2,ensure_ascii=False),encoding="utf-8")
@@ -806,7 +807,7 @@ class GhosttzzKBot:
             self.status.set("Pare a reprodução antes de carregar outra gravação.")
             return
         self.finish_record()
-        path=filedialog.askopenfilename(initialdir=RECORDINGS_DIR,title="Carregar gravação",filetypes=[("Gravação GhosttzzKBot","*.json")])
+        path=filedialog.askopenfilename(initialdir=RECORDINGS_DIR,title="Carregar gravação",filetypes=[("Gravação Zyon Macro","*.json")])
         if not path:return
         try:
             data=json.loads(Path(path).read_text(encoding="utf-8")); events=data.get("events",[])
@@ -816,7 +817,7 @@ class GhosttzzKBot:
         except Exception as e: messagebox.showerror(APP_NAME,f"Falha ao carregar: {e}")
 
     def delete_recording(self):
-        path=filedialog.askopenfilename(initialdir=RECORDINGS_DIR,title="Excluir gravação",filetypes=[("Gravação GhosttzzKBot","*.json")])
+        path=filedialog.askopenfilename(initialdir=RECORDINGS_DIR,title="Excluir gravação",filetypes=[("Gravação Zyon Macro","*.json")])
         if path and messagebox.askyesno(APP_NAME,f"Excluir {Path(path).name}?"):
             try: os.remove(path); self.status.set("Arquivo excluído.")
             except Exception as e: messagebox.showerror(APP_NAME,str(e))
@@ -1020,7 +1021,7 @@ class GhosttzzKBot:
             messagebox.showerror(APP_NAME, str(error), parent=self.root)
 
     def about(self):
-        messagebox.showinfo("Sobre GhosttzzKBot", f"{APP_NAME} v{VERSION}\nGravador e reprodutor de mouse.", parent=self.root)
+        messagebox.showinfo("Sobre Zyon Macro", f"{APP_NAME} v{VERSION}\nGravador e reprodutor de mouse.\nUm projeto da Zyon Nexus.", parent=self.root)
         self.check_update(interactive=True)
 
     def check_update(self, interactive=False):
@@ -1054,7 +1055,7 @@ class GhosttzzKBot:
             return
         self.update_busy = True
         dialog = tk.Toplevel(self.root)
-        dialog.title("Atualizando GhosttzzKBot")
+        dialog.title("Atualizando Zyon Macro")
         dialog.transient(self.root)
         dialog.resizable(False, False)
         dialog.protocol("WM_DELETE_WINDOW", lambda: None)

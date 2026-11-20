@@ -1,15 +1,17 @@
 [Setup]
 AppId={{F9BC7E0A-73F2-48F1-AF61-1E7B9C12FBB1}
-AppName=GhosttzzKBot
-AppVersion=1.4.0
-DefaultDirName={localappdata}\Programs\GhosttzzKBot
-DefaultGroupName=GhosttzzKBot
+AppName=Zyon Macro
+AppPublisher=Zyon Nexus
+AppVersion=1.4.1
+DefaultDirName={localappdata}\Programs\Zyon Macro
+DefaultGroupName=Zyon Macro
+UsePreviousGroup=no
 PrivilegesRequired=lowest
 UsePreviousAppDir=yes
 OutputDir=installer
-OutputBaseFilename=GhosttzzKBot-Setup
+OutputBaseFilename=Zyon-Macro-Setup
 SetupIconFile=assets\GhosttzzKBot.ico
-UninstallDisplayIcon={app}\GhosttzzKBot.exe
+UninstallDisplayIcon={app}\ZyonMacro.exe
 WizardStyle=modern
 CloseApplications=yes
 
@@ -17,21 +19,26 @@ CloseApplications=yes
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "dist\GhosttzzKBot\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "dist\ZyonMacro\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "config\settings.json"; DestDir: "{localappdata}\GhosttzzKBot\config"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [Icons]
-Name: "{group}\GhosttzzKBot"; Filename: "{app}\GhosttzzKBot.exe"
-Name: "{autodesktop}\GhosttzzKBot"; Filename: "{app}\GhosttzzKBot.exe"; Tasks: desktopicon
+Name: "{group}\Zyon Macro"; Filename: "{app}\ZyonMacro.exe"
+Name: "{autodesktop}\Zyon Macro"; Filename: "{app}\ZyonMacro.exe"; Tasks: desktopicon
+
+[InstallDelete]
+Type: files; Name: "{app}\GhosttzzKBot.exe"
+Type: files; Name: "{autoprograms}\GhosttzzKBot\GhosttzzKBot.lnk"
+Type: files; Name: "{autodesktop}\GhosttzzKBot.lnk"
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; Flags: unchecked
 
 [Run]
-Filename: "{app}\GhosttzzKBot.exe"; Description: "Abrir GhosttzzKBot"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\ZyonMacro.exe"; Description: "Abrir Zyon Macro"; Flags: postinstall nowait skipifsilent
 
-Filename: "{app}\GhosttzzKBot.exe"; Flags: nowait skipifnotsilent; Check: IsGhostUpdate
+Filename: "{app}\ZyonMacro.exe"; Flags: nowait skipifnotsilent; Check: IsGhostUpdate
 
 [Code]
 function IsGhostUpdate: Boolean;
