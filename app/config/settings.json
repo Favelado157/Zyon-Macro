@@ -1,0 +1,16 @@
+{
+  "hotkeys": {
+    "record": "<f5>",
+    "pause": "<f6>",
+    "play": "<f7>",
+    "stop": "<f8>"
+  },
+  "record_mouse_movement": true,
+  "record_mouse_clicks": true,
+  "record_scroll": true,
+  "show_mouse_path": true,
+  "repeat_playback": false,
+  "repeat_interval_ms": 100,
+  "click_delay_ms": 50,
+  "mode": "Normal"
+}

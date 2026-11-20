@@ -1,0 +1,57 @@
+name: Instalador Windows
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - shell: cmd
+        run: build_windows.bat
+      - name: Verificar instalação e abertura
+        shell: pwsh
+        run: |
+          $setup = Start-Process -FilePath "$PWD/installer/GhosttzzKBot-Setup.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Falha do instalador ($($setup.ExitCode))" }
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs/GhosttzzKBot/GhosttzzKBot.exe'
+          $app = Start-Process -FilePath $exe -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(20)
+            do {
+              Start-Sleep -Milliseconds 500
+              $app.Refresh()
+              if ($app.HasExited) { throw "O aplicativo encerrou antes de abrir" }
+              if ($app.MainWindowTitle -match '^GhosttzzKBot v[0-9]+\.[0-9]+\.[0-9]+$') { break }
+            } while ((Get-Date) -lt $deadline)
+            if ($app.MainWindowTitle -notmatch '^GhosttzzKBot v[0-9]+\.[0-9]+\.[0-9]+$') { throw "Janela do painel ausente: $($app.MainWindowTitle)" }
+            Write-Host "Janela confirmada: $($app.MainWindowTitle)"
+          } finally {
+            if (!$app.HasExited) {
+              $null = $app.CloseMainWindow()
+              if (!$app.WaitForExit(10000)) { Stop-Process -Id $app.Id -Force }
+            }
+          }
+      - shell: pwsh
+        run: |
+          Compress-Archive -Path 'installer/GhosttzzKBot-Setup.exe','LEIA-ME.txt' -DestinationPath 'installer/GhosttzzKBot-Windows11.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GhosttzzKBot-Windows11
+          path: app/installer/GhosttzzKBot-Windows11.zip
+      - if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" installer/GhosttzzKBot-Windows11.zip --verify-tag --generate-notes
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

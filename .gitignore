@@ -1,0 +1,7 @@
+__pycache__/
+*.spec
+app/build/
+app/dist/
+app/installer/
+app/recordings/
+app/config/*.tmp

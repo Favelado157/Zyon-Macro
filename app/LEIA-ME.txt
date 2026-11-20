@@ -1,0 +1,13 @@
+GhosttzzKBot 1.2.0 — Windows 11
+
+Extraia o ZIP e execute GhosttzzKBot-Setup.exe. Abra GhosttzzKBot pelo
+menu Iniciar ou pelo atalho opcional na área de trabalho.
+
+F5 grava. F6 pausa ou retoma. F7 termina a captura e reproduz a trilha.
+F8 termina a captura ou interrompe a reprodução. Salvar Gravação exporta
+a captura em JSON. Edite os quatro atalhos no painel Atalhos de Teclado.
+
+Configurações e temas ficam em %LOCALAPPDATA%\GhosttzzKBot\config.
+Use Temas para importar arte para o cabeçalho, o banner, a lateral e o
+ícone da janela. As mudanças de imagem aparecem ao reabrir o aplicativo.
+As gravações são salvas por padrão em %LOCALAPPDATA%\GhosttzzKBot\recordings.
