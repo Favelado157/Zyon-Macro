@@ -1,4 +1,4 @@
-Zyon Macro 1.4.1 — Um projeto da Zyon Nexus — Windows 11
+Zyon Macro 1.4.2 — Um projeto da Zyon Nexus — Windows 11
 
 Extraia o ZIP e execute Zyon-Macro-Setup.exe. Abra Zyon Macro pelo
 menu Iniciar ou pelo atalho opcional na área de trabalho.
@@ -20,3 +20,6 @@ a atualização e reabre ao terminar.
 
 Para migrar do GhosttzzKBot, use a atualização do aplicativo ou execute este instalador. A pasta de
 dados antiga foi mantida para preservar suas gravações, temas e configurações.
+
+Nome do painel com mais destaque e contraste em branco e azul neon.
+Instale esta versão pelo ZIP uma vez após a mudança de nome do repositório.

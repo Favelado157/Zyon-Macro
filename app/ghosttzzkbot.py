@@ -12,7 +12,7 @@ except ImportError:
 
 APP_NAME = "Zyon Macro"
 DATA_FOLDER = "GhosttzzKBot"  # Preserve existing recordings and settings.
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(BASE_DIR))) / DATA_FOLDER if sys.platform == "win32" else BASE_DIR
 CONFIG_DIR = DATA_DIR / "config"
@@ -322,7 +322,7 @@ class GhosttzzKBot:
         brand.pack(side="left", pady=7)
         name_row = tk.Frame(brand, bg=brand.cget("bg"))
         name_row.pack(anchor="w")
-        name = self.brand_image(name_row, 236, 48)
+        name = self.brand_image(name_row, 284, 48)
         name.pack(side="left")
         version = self.label(name_row, f"v{VERSION}", fg="#b8dcff", font=("Segoe UI", 9, "bold"))
         version.pack(side="left", anchor="s", pady=5, padx=4)

@@ -2,7 +2,7 @@
 AppId={{F9BC7E0A-73F2-48F1-AF61-1E7B9C12FBB1}
 AppName=Zyon Macro
 AppPublisher=Zyon Nexus
-AppVersion=1.4.1
+AppVersion=1.4.2
 DefaultDirName={localappdata}\Programs\Zyon Macro
 DefaultGroupName=Zyon Macro
 UsePreviousGroup=no

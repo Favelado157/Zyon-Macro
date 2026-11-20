@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from PIL import Image, ImageColor, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 
 @lru_cache(maxsize=20)
@@ -10,21 +10,31 @@ def brush_font(path, size):
 
 def logo(image, title, font_path, box):
     x, y, width, height = box
-    size = max(10, height)
-    font = brush_font(font_path, size)
-    bounds = font.getbbox(title, stroke_width=1)
-    natural_width = bounds[2] - bounds[0]
-    natural_height = bounds[3] - bounds[1]
-    scale = min(width / natural_width, height / natural_height, 1)
-    mask = Image.new("L", (natural_width, natural_height))
-    ImageDraw.Draw(mask).text((-bounds[0], -bounds[1]), title, font=font, fill=255, stroke_width=1)
+    title = title.upper()
+    font = brush_font(font_path, max(10, height))
+    stroke = max(1, round(height * .035))
+    bounds = font.getbbox(title, stroke_width=stroke)
+    mask = Image.new("L", (bounds[2] - bounds[0], bounds[3] - bounds[1]))
+    ImageDraw.Draw(mask).text((-bounds[0], -bounds[1]), title, font=font,
+                             fill=255, stroke_width=stroke)
+    scale = min(max(1, width - 10) / mask.width, max(1, height - 8) / mask.height, 1)
     if scale < 1:
         mask = mask.resize((max(1, round(mask.width * scale)), max(1, round(mask.height * scale))),
                            Image.Resampling.LANCZOS)
-    tint = Image.new("RGB", (mask.width, 1))
-    tint.putdata([(max(0, 245 - int(247 * col / mask.width)),
-                   250 - int(68 * col / mask.width), 255) for col in range(mask.width)])
-    image.paste(tint.resize(mask.size), (x + (width - mask.width) // 2, y + (height - mask.height) // 2), mask)
+    # Keep a bright, thick face; a restrained cyan rim separates it from artwork.
+    face = Image.new("RGB", (1, mask.height))
+    face.putdata([(round(245 - 89 * row / max(1, mask.height - 1)),
+                   round(253 - 14 * row / max(1, mask.height - 1)), 255)
+                  for row in range(mask.height)])
+    position = (x + (width - mask.width) // 2, y + (height - mask.height) // 2)
+    layer = Image.new("L", image.size)
+    layer.paste(mask, position)
+    outline = layer.filter(ImageFilter.MaxFilter(3))
+    image.paste("#001225", (0, 0), outline.filter(ImageFilter.MaxFilter(3)))
+    glow = outline.filter(ImageFilter.GaussianBlur(1.2)).point(lambda value: round(value * .55))
+    image.paste("#00bfff", (0, 0), glow)
+    image.paste("#20ceff", (0, 0), outline)
+    image.paste(face.resize(mask.size), position, mask)
 
 
 def control_texture(texture, size, palette, hovered):

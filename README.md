@@ -6,7 +6,7 @@ Gravador de movimentos, cliques e rolagem do mouse para Windows 11.
 
 ## Instalação
 
-Baixe `Zyon-Macro-Windows11.zip`, extraia os arquivos e execute `Zyon-Macro-Setup.exe`. Abra o painel pelo menu Iniciar após a instalação. [Versões no GitHub](https://github.com/Favelado157/Ghostt_Macro/releases)
+Baixe `Zyon-Macro-Windows11.zip`, extraia os arquivos e execute `Zyon-Macro-Setup.exe`. Abra o painel pelo menu Iniciar após a instalação. [Versões no GitHub](https://github.com/Favelado157/Zyon-Macro/releases)
 
 | Ação | Atalho inicial |
 | --- | --- |
@@ -38,4 +38,8 @@ A edição de arte é aplicada ao reabrir. Para distribuir a edição como nova 
 
 ## Novo nome: Zyon Macro
 
-A versão 1.4.1 passa a se chamar Zyon Macro. Para atualizar uma instalação antiga do GhosttzzKBot, use a atualização do aplicativo ou baixe o ZIP da nova versão e execute o instalador. O identificador de instalação e a pasta de dados antiga foram mantidos para preservar temas, configurações e gravações. As próximas atualizações usam o mesmo repositório e os novos nomes de arquivos. O endereço do repositório permanece Ghostt_Macro.
+A versão 1.4.1 passa a se chamar Zyon Macro. Para atualizar uma instalação antiga do GhosttzzKBot, use a atualização do aplicativo ou baixe o ZIP da nova versão e execute o instalador. O identificador de instalação e a pasta de dados antiga foram mantidos para preservar temas, configurações e gravações. As próximas atualizações usam o mesmo repositório e os novos nomes de arquivos. O repositório agora se chama Zyon-Macro.
+
+## Título com mais destaque — 1.4.2
+
+Nome do painel em letras maiúsculas, traço mais grosso, branco com azul neon e contorno para maior contraste. O cabeçalho ganhou mais espaço para o nome. Como o repositório foi renomeado, instale esta versão pelo ZIP uma vez para atualizar o endereço de busca das próximas versões. Suas configurações e gravações são preservadas.

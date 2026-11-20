@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
-REPO = "Favelado157/Ghostt_Macro"
+REPO = "Favelado157/Zyon-Macro"
 ZIP_NAME = "Zyon-Macro-Windows11.zip"
 INSTALLER_NAME = "Zyon-Macro-Setup.exe"
 MAX_SIZE = 128 * 1024 * 1024
